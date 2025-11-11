@@ -1,0 +1,67 @@
+# NexusDEX AI - Docker Compose Configuration
+# ===========================================
+# За local development и testing
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: nexusdex_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nexusdex_ai
+      POSTGRES_USER: nexusdex_user
+      POSTGRES_PASSWORD: nexusdex_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexusdex_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Flask Application
+  web:
+    build: .
+    container_name: nexusdex_app
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+      - DATABASE_URL=postgresql://nexusdex_user:nexusdex_password@db:5432/nexusdex_ai
+      - SECRET_KEY=dev-secret-key-change-this
+      - OWNER_WALLET=0xfee37e7e64d70f37f96c42375131abb57c1481c2
+      - TRADING_MODE=paper
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    command: python app.py
+
+  # Optional: pgAdmin за database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: nexusdex_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@nexusdex.ai
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
+
+networks:
+  default:
+    name: nexusdex_network
