@@ -1,0 +1,73 @@
+# NexusDEX AI - Python Dependencies
+# ==================================
+
+# Flask Framework
+Flask==3.0.0
+Flask-CORS==4.0.0
+Flask-Session==0.5.0
+
+# Database
+psycopg2-binary==2.9.9
+
+# CCXT - Exchange Integration
+ccxt==4.2.0
+
+# Encryption
+cryptography==41.0.7
+
+# Data Processing
+numpy==1.26.2
+pandas==2.1.4
+
+# HTTP Requests
+requests==2.31.0
+
+# WebSocket (за real-time data)
+websocket-client==1.7.0
+websockets==12.0
+
+# Environment Variables
+python-dotenv==1.0.0
+
+# Logging
+python-json-logger==2.0.7
+
+# Date/Time
+python-dateutil==2.8.2
+
+# Async
+aiohttp==3.9.1
+asyncio==3.4.3
+
+# Testing (optional но препоръчително)
+pytest==7.4.3
+pytest-asyncio==0.21.1
+
+# Production Server (вместо Flask dev server)
+gunicorn==21.2.0
+
+# Monitoring (optional)
+# sentry-sdk==1.39.1  # За error tracking - безплатен tier
+
+# Rate Limiting
+limits==3.7.0
+
+# UUID Generation
+shortuuid==1.0.11
+
+# JSON handling
+simplejson==3.19.2
+
+# Caching (optional)
+# redis==5.0.1  # Ако искаш да добавиш caching
+
+# Web3 (за blockchain interaction)
+web3==6.15.0
+eth-account==0.10.0
+
+# ВАЖНО: Telegram Bot API (безплатен)
+# Telegram е built-in в requests library, не е нужен separate package
+
+# Machine Learning (за бъдещо ML prediction)
+# scikit-learn==1.3.2
+# tensorflow==2.15.0  # Ако искаш neural network prediction
