@@ -1,0 +1,1012 @@
+<!-- NexusDEX AI - index.html (КРАЯ на ЧАСТ 1 - FIXED) -->
+<!-- Замени само края на файла с това -->
+
+</head>
+<body>
+    <div id="root"></div>
+    
+    <!-- React Application -->
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        
+        // OWNER WALLET - Твоя адрес за subscription payments
+        const OWNER_WALLET = "0xfee37e7e64d70f37f96c42375131abb57c1481c2";
+        
+        // ========================================================================
+        // ЧАСТ 2 ЗАПОЧВА ТУК - Добави ЧАСТ 2 след този ред
+        // ========================================================================
+// NexusDEX AI - React Application (ЧАСТ 2)
+// ==========================================
+// Добави този код в <script type="text/babel"> секцията
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+const API_BASE = window.location.origin;
+
+// API Helper функции
+const api = {
+    async call(endpoint, options = {}) {
+        try {
+            const response = await fetch(`${API_BASE}${endpoint}`, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                },
+                credentials: 'include'
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error || 'API request failed');
+            }
+            
+            return data;
+        } catch (error) {
+            console.error('API Error:', error);
+            throw error;
+        }
+    },
+    
+    get(endpoint) {
+        return this.call(endpoint, { method: 'GET' });
+    },
+    
+    post(endpoint, data) {
+        return this.call(endpoint, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    },
+    
+    put(endpoint, data) {
+        return this.call(endpoint, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    },
+    
+    delete(endpoint) {
+        return this.call(endpoint, { method: 'DELETE' });
+    }
+};
+
+// Format числа
+const formatNumber = (num, decimals = 2) => {
+    if (!num) return '0.00';
+    return Number(num).toFixed(decimals);
+};
+
+const formatCurrency = (num) => {
+    return `$${formatNumber(num, 2)}`;
+};
+
+const formatPercent = (num) => {
+    return `${num >= 0 ? '+' : ''}${formatNumber(num, 2)}%`;
+};
+
+// Format дата
+const formatDate = (timestamp) => {
+    return new Date(timestamp).toLocaleString();
+};
+
+// ============================================================================
+// TOAST COMPONENT
+// ============================================================================
+
+const Toast = ({ message, type = 'info', onClose }) => {
+    useEffect(() => {
+        const timer = setTimeout(onClose, 5000);
+        return () => clearTimeout(timer);
+    }, []);
+    
+    return (
+        <div className={`toast toast-${type}`}>
+            <div className="flex items-center gap-3">
+                <div className="font-semibold">{message}</div>
+                <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                    ✕
+                </button>
+            </div>
+        </div>
+    );
+};
+
+// ============================================================================
+// MODAL COMPONENT
+// ============================================================================
+
+const Modal = ({ isOpen, onClose, title, children }) => {
+    if (!isOpen) return null;
+    
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-content" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold">{title}</h2>
+                    <button 
+                        onClick={onClose}
+                        className="text-gray-400 hover:text-gray-600 text-2xl"
+                    >
+                        ✕
+                    </button>
+                </div>
+                {children}
+            </div>
+        </div>
+    );
+};
+
+// ============================================================================
+// LOADING COMPONENT
+// ============================================================================
+
+const Loading = ({ text = 'Loading...' }) => (
+    <div className="text-center py-8">
+        <div className="spinner"></div>
+        <p className="text-gray-600 mt-4">{text}</p>
+    </div>
+);
+
+// ============================================================================
+// STAT CARD COMPONENT
+// ============================================================================
+
+const StatCard = ({ title, value, subtitle, icon, trend }) => (
+    <div className="stat-card">
+        <div className="flex justify-between items-start mb-2">
+            <div className="text-sm text-gray-600">{title}</div>
+            {icon && <div className="text-purple-600">{icon}</div>}
+        </div>
+        <div className="text-3xl font-bold mb-1">{value}</div>
+        {subtitle && (
+            <div className={`text-sm ${trend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {subtitle}
+            </div>
+        )}
+    </div>
+);
+
+// ============================================================================
+// LANGUAGE SELECTOR COMPONENT
+// ============================================================================
+
+const languages = {
+    en: '🇬🇧 English',
+    bg: '🇧🇬 Български',
+    de: '🇩🇪 Deutsch',
+    fr: '🇫🇷 Français',
+    es: '🇪🇸 Español',
+    it: '🇮🇹 Italiano',
+    ru: '🇷🇺 Русский',
+    tr: '🇹🇷 Türkçe',
+    ar: '🇸🇦 العربية',
+    zh: '🇨🇳 中文',
+    ja: '🇯🇵 日本語',
+    ko: '🇰🇷 한국어',
+    pt: '🇵🇹 Português',
+    nl: '🇳🇱 Nederlands',
+    pl: '🇵🇱 Polski'
+};
+
+const LanguageSelector = ({ currentLang, onLanguageChange }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    
+    return (
+        <div className="language-selector">
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="btn-secondary text-sm"
+            >
+                {languages[currentLang] || languages.en}
+            </button>
+            
+            {isOpen && (
+                <div className="language-dropdown">
+                    {Object.entries(languages).map(([code, name]) => (
+                        <div
+                            key={code}
+                            className="language-option"
+                            onClick={() => {
+                                onLanguageChange(code);
+                                setIsOpen(false);
+                            }}
+                        >
+                            {name}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+// ============================================================================
+// METAMASK CONNECTION
+// ============================================================================
+
+const useMetaMask = () => {
+    const [account, setAccount] = useState(null);
+    const [isConnecting, setIsConnecting] = useState(false);
+    
+    const connectWallet = async () => {
+        if (!window.ethereum) {
+            alert('Please install MetaMask!');
+            return;
+        }
+        
+        setIsConnecting(true);
+        
+        try {
+            const accounts = await window.ethereum.request({
+                method: 'eth_requestAccounts'
+            });
+            
+            const address = accounts[0].toLowerCase();
+            setAccount(address);
+            
+            return address;
+        } catch (error) {
+            console.error('MetaMask connection error:', error);
+            throw error;
+        } finally {
+            setIsConnecting(false);
+        }
+    };
+    
+    const disconnectWallet = () => {
+        setAccount(null);
+    };
+    
+    // Listen за account changes
+    useEffect(() => {
+        if (window.ethereum) {
+            window.ethereum.on('accountsChanged', (accounts) => {
+                if (accounts.length > 0) {
+                    setAccount(accounts[0].toLowerCase());
+                } else {
+                    setAccount(null);
+                }
+            });
+        }
+    }, []);
+    
+    return {
+        account,
+        isConnecting,
+        connectWallet,
+        disconnectWallet
+    };
+};
+
+// ============================================================================
+// TRADE CARD COMPONENT
+// ============================================================================
+
+const TradeCard = ({ trade, onClose }) => {
+    const pnl = trade.pnl || 0;
+    const isProfit = pnl >= 0;
+    
+    return (
+        <div className={`trade-card ${trade.side.toLowerCase()}`}>
+            <div className="flex justify-between items-start mb-3">
+                <div>
+                    <div className="font-bold text-lg">{trade.pair}</div>
+                    <div className="text-sm text-gray-600">{trade.exchange}</div>
+                </div>
+                <div className={`badge badge-${trade.side === 'LONG' ? 'success' : 'danger'}`}>
+                    {trade.side}
+                </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 mb-3">
+                <div>
+                    <div className="text-xs text-gray-500">Entry</div>
+                    <div className="font-semibold">{formatCurrency(trade.entry_price)}</div>
+                </div>
+                {trade.exit_price && (
+                    <div>
+                        <div className="text-xs text-gray-500">Exit</div>
+                        <div className="font-semibold">{formatCurrency(trade.exit_price)}</div>
+                    </div>
+                )}
+                <div>
+                    <div className="text-xs text-gray-500">Size</div>
+                    <div className="font-semibold">{formatNumber(trade.size, 4)}</div>
+                </div>
+                <div>
+                    <div className="text-xs text-gray-500">Leverage</div>
+                    <div className="font-semibold">{trade.leverage}x</div>
+                </div>
+            </div>
+            
+            {trade.status === 'OPEN' ? (
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => onClose(trade.id, trade.take_profit)}
+                        className="btn-primary text-sm flex-1"
+                    >
+                        Close at TP
+                    </button>
+                    <button
+                        onClick={() => onClose(trade.id, trade.stop_loss)}
+                        className="btn-secondary text-sm flex-1"
+                    >
+                        Close at SL
+                    </button>
+                </div>
+            ) : (
+                <div className={`text-center font-bold text-lg ${isProfit ? 'text-green-600' : 'text-red-600'}`}>
+                    P&L: {formatCurrency(pnl)} ({formatPercent(trade.pnl_percent)})
+                </div>
+            )}
+        </div>
+    );
+};
+
+// ============================================================================
+// RISK STATUS COMPONENT
+// ============================================================================
+
+const RiskStatus = ({ riskStatus }) => {
+    if (!riskStatus) return null;
+    
+    const getRiskColor = (level) => {
+        switch (level) {
+            case 'LOW': return 'risk-low';
+            case 'MEDIUM': return 'risk-medium';
+            case 'HIGH': return 'risk-high';
+            case 'CRITICAL': return 'risk-critical';
+            default: return 'text-gray-600';
+        }
+    };
+    
+    return (
+        <div className="card">
+            <h3 className="text-xl font-bold mb-4">🛡️ Risk Status</h3>
+            
+            <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <div className="text-sm text-gray-600">Daily Loss</div>
+                    <div className="font-semibold">
+                        {formatPercent(riskStatus.daily_loss_pct)} / {riskStatus.daily_loss_limit}%
+                    </div>
+                </div>
+                <div>
+                    <div className="text-sm text-gray-600">Portfolio Heat</div>
+                    <div className="font-semibold">
+                        {formatNumber(riskStatus.portfolio_heat)}% / {riskStatus.portfolio_heat_limit}%
+                    </div>
+                </div>
+                <div>
+                    <div className="text-sm text-gray-600">Open Positions</div>
+                    <div className="font-semibold">
+                        {riskStatus.positions_count} / {riskStatus.positions_limit}
+                    </div>
+                </div>
+                <div>
+                    <div className="text-sm text-gray-600">Daily Trades</div>
+                    <div className="font-semibold">
+                        {riskStatus.daily_trades} / {riskStatus.daily_trades_limit}
+                    </div>
+                </div>
+            </div>
+            
+            <div className="text-center">
+                <div className="text-sm text-gray-600 mb-1">Risk Level</div>
+                <div className={`text-2xl font-bold ${getRiskColor(riskStatus.risk_level)}`}>
+                    {riskStatus.risk_level}
+                </div>
+            </div>
+            
+            {riskStatus.circuit_breaker && (
+                <div className="mt-4 p-4 bg-red-100 border-2 border-red-500 rounded-lg">
+                    <div className="text-red-700 font-bold text-center">
+                        🚨 CIRCUIT BREAKER ACTIVE!
+                    </div>
+                    <div className="text-red-600 text-sm text-center mt-1">
+                        Trading stopped - Daily loss limit reached
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// ============================================================================
+// EXCHANGE SELECTOR COMPONENT
+// ============================================================================
+
+const ExchangeSelector = ({ exchanges, selected, onSelect }) => (
+    <div className="card">
+        <h3 className="text-xl font-bold mb-4">Select Exchange</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {exchanges.map(exchange => (
+                <button
+                    key={exchange.id}
+                    onClick={() => onSelect(exchange.id)}
+                    className={`p-4 rounded-lg border-2 transition-all ${
+                        selected === exchange.id
+                            ? 'border-purple-500 bg-purple-50'
+                            : 'border-gray-200 hover:border-purple-300'
+                    }`}
+                >
+                    <div className="font-bold">{exchange.name}</div>
+                    <div className="text-xs text-gray-500">{exchange.network}</div>
+                    <div className={`text-xs mt-1 ${
+                        exchange.status === 'online' ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                        {exchange.status === 'online' ? '🟢 Online' : '🔴 Offline'}
+                    </div>
+                </button>
+            ))}
+        </div>
+    </div>
+);
+
+// ============================================================================
+// TRADING PAIRS COMPONENT
+// ============================================================================
+
+const TradingPairs = ({ pairs, selected, onSelect, prices }) => (
+    <div className="card">
+        <h3 className="text-xl font-bold mb-4">Trading Pairs</h3>
+        <div className="space-y-2">
+            {pairs.map(pair => {
+                const price = prices[pair];
+                return (
+                    <button
+                        key={pair}
+                        onClick={() => onSelect(pair)}
+                        className={`w-full p-3 rounded-lg border-2 transition-all text-left ${
+                            selected === pair
+                                ? 'border-purple-500 bg-purple-50'
+                                : 'border-gray-200 hover:border-purple-300'
+                        }`}
+                    >
+                        <div className="flex justify-between items-center">
+                            <div className="font-bold">{pair}</div>
+                            {price && (
+                                <div className="text-sm">
+                                    {formatCurrency(price)}
+                                </div>
+                            )}
+                        </div>
+
+                    </button>
+                );
+            })}
+        </div>
+    </div>
+);
+
+// ЧАСТ 3 ще съдържа главните компоненти (Dashboard, Trading, Admin)...
+// NexusDEX AI - React Application (ЧАСТ 3 - Main Components)
+// ===========================================================
+// Добави след ЧАСТ 2
+
+// ============================================================================
+// DASHBOARD COMPONENT
+// ============================================================================
+
+const Dashboard = ({ user, translations }) => {
+    const [stats, setStats] = useState({
+        balance: 0,
+        total_pnl: 0,
+        win_rate: 0,
+        total_trades: 0
+    });
+    const [recentTrades, setRecentTrades] = useState([]);
+    const [riskStatus, setRiskStatus] = useState(null);
+    const [loading, setLoading] = useState(true);
+    
+    useEffect(() => {
+        loadDashboardData();
+    }, []);
+    
+    const loadDashboardData = async () => {
+        try {
+            // Load stats
+            setStats({
+                balance: user.balance || 10000,
+                total_pnl: user.total_pnl || 0,
+                win_rate: user.total_trades > 0 
+                    ? (user.winning_trades / user.total_trades * 100)
+                    : 0,
+                total_trades: user.total_trades || 0
+            });
+            
+            // Load recent trades
+            const tradesData = await api.get('/api/trading/history?limit=10');
+            setRecentTrades(tradesData.trades || []);
+            
+            // Load risk status
+            const riskData = await api.get('/api/risk/status');
+            setRiskStatus(riskData);
+            
+        } catch (error) {
+            console.error('Failed to load dashboard:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    if (loading) return <Loading />;
+    
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h1 className="text-3xl font-bold">📊 {translations.dashboard || 'Dashboard'}</h1>
+            </div>
+            
+            {/* Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <StatCard
+                    title={translations.balance || 'Balance'}
+                    value={formatCurrency(stats.balance)}
+                    icon="💼"
+                />
+                <StatCard
+                    title={translations.profit_loss || 'Total P&L'}
+                    value={formatCurrency(stats.total_pnl)}
+                    trend={stats.total_pnl}
+                    icon="💰"
+                />
+                <StatCard
+                    title={translations.win_rate || 'Win Rate'}
+                    value={formatPercent(stats.win_rate)}
+                    icon="🎯"
+                />
+                <StatCard
+                    title={translations.total_trades || 'Total Trades'}
+                    value={stats.total_trades}
+                    icon="📈"
+                />
+            </div>
+            
+            {/* Risk Status */}
+            {riskStatus && <RiskStatus riskStatus={riskStatus} />}
+            
+            {/* Recent Trades */}
+            <div className="card">
+                <h3 className="text-xl font-bold mb-4">Recent Trades</h3>
+                {recentTrades.length > 0 ? (
+                    <div className="space-y-3">
+                        {recentTrades.map(trade => (
+                            <TradeCard key={trade.id} trade={trade} onClose={() => {}} />
+                        ))}
+                    </div>
+                ) : (
+                    <p className="text-gray-500 text-center py-4">No trades yet</p>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// ============================================================================
+// TRADING COMPONENT
+// ============================================================================
+
+const Trading = ({ user, translations }) => {
+    const [exchanges, setExchanges] = useState([]);
+    const [selectedExchange, setSelectedExchange] = useState(null);
+    const [pairs, setPairs] = useState([]);
+    const [selectedPair, setSelectedPair] = useState(null);
+    const [signal, setSignal] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [executing, setExecuting] = useState(false);
+    
+    useEffect(() => {
+        loadExchanges();
+    }, []);
+    
+    useEffect(() => {
+        if (selectedExchange) {
+            loadPairs();
+        }
+    }, [selectedExchange]);
+    
+    const loadExchanges = async () => {
+        try {
+            const data = await api.get('/api/exchanges/list');
+            setExchanges(data.exchanges || []);
+        } catch (error) {
+            console.error('Failed to load exchanges:', error);
+        }
+    };
+    
+    const loadPairs = async () => {
+        try {
+            const data = await api.get(`/api/exchanges/${selectedExchange}/pairs`);
+            setPairs(data.pairs || []);
+            if (data.pairs.length > 0) {
+                setSelectedPair(data.pairs[0]);
+            }
+        } catch (error) {
+            console.error('Failed to load pairs:', error);
+        }
+    };
+    
+    const analyzeSignal = async () => {
+        if (!selectedExchange || !selectedPair) return;
+        
+        setLoading(true);
+        try {
+            const data = await api.post('/api/trading/signal', {
+                exchange: selectedExchange,
+                pair: selectedPair,
+                account_balance: user.balance || 10000
+            });
+            setSignal(data);
+        } catch (error) {
+            console.error('Failed to analyze signal:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    const executeTrade = async () => {
+        if (!signal || signal.signal === 'HOLD') return;
+        
+        setExecuting(true);
+        try {
+            await api.post('/api/trading/execute', {
+                exchange: selectedExchange,
+                pair: selectedPair,
+                side: signal.signal,
+                entry_price: signal.entry_price,
+                stop_loss: signal.stop_loss,
+                take_profit: signal.take_profit,
+                size: 0.1, // Default size
+                leverage: 5
+            });
+            
+            alert('Trade executed successfully!');
+            setSignal(null);
+        } catch (error) {
+            alert('Failed to execute trade: ' + error.message);
+        } finally {
+            setExecuting(false);
+        }
+    };
+    
+    return (
+        <div className="space-y-6">
+            <h1 className="text-3xl font-bold">📈 Trading</h1>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Exchange Selection */}
+                <ExchangeSelector
+                    exchanges={exchanges}
+                    selected={selectedExchange}
+                    onSelect={setSelectedExchange}
+                />
+                
+                {/* Pair Selection */}
+                {selectedExchange && (
+                    <TradingPairs
+                        pairs={pairs}
+                        selected={selectedPair}
+                        onSelect={setSelectedPair}
+                        prices={{}}
+                    />
+                )}
+            </div>
+            
+            {/* Analyze Button */}
+            {selectedExchange && selectedPair && (
+                <div className="text-center">
+                    <button
+                        onClick={analyzeSignal}
+                        disabled={loading}
+                        className="btn-primary text-lg px-8 py-4"
+                    >
+                        {loading ? 'Analyzing...' : '🔍 Analyze Market'}
+                    </button>
+                </div>
+            )}
+            
+            {/* Signal Display */}
+            {signal && (
+                <div className="card">
+                    <h3 className="text-xl font-bold mb-4">Trading Signal</h3>
+                    
+                    <div className={`text-center mb-6 ${
+                        signal.signal === 'BUY' ? 'text-green-600' :
+                        signal.signal === 'SELL' ? 'text-red-600' :
+                        'text-gray-600'
+                    }`}>
+                        <div className="text-4xl font-bold mb-2">
+                            {signal.signal === 'BUY' ? '🟢' : signal.signal === 'SELL' ? '🔴' : '⚪'}
+                            {' '}{signal.signal}
+                        </div>
+                        <div className="text-2xl">
+                            Confidence: {signal.confidence}%
+                        </div>
+                    </div>
+                    
+                    {signal.signal !== 'HOLD' && (
+                        <>
+                            <div className="grid grid-cols-3 gap-4 mb-6">
+                                <div className="text-center">
+                                    <div className="text-sm text-gray-600">Entry</div>
+                                    <div className="font-bold text-lg">
+                                        {formatCurrency(signal.entry_price)}
+                                    </div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-sm text-gray-600">Stop Loss</div>
+                                    <div className="font-bold text-lg text-red-600">
+                                        {formatCurrency(signal.stop_loss)}
+                                    </div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-sm text-gray-600">Take Profit</div>
+                                    <div className="font-bold text-lg text-green-600">
+                                        {formatCurrency(signal.take_profit)}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button
+                                onClick={executeTrade}
+                                disabled={executing || signal.confidence < 60}
+                                className="btn-primary w-full text-lg"
+                            >
+                                {executing ? 'Executing...' : '⚡ Execute Trade'}
+                            </button>
+                            
+                            {signal.confidence < 60 && (
+                                <p className="text-red-600 text-sm text-center mt-2">
+                                    Confidence too low (minimum 60%)
+                                </p>
+                            )}
+                        </>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
+// ============================================================================
+// ADMIN PANEL COMPONENT
+// ============================================================================
+
+const AdminPanel = ({ translations }) => {
+    const [users, setUsers] = useState([]);
+    const [stats, setStats] = useState({});
+    const [loading, setLoading] = useState(true);
+    
+    useEffect(() => {
+        loadAdminData();
+    }, []);
+    
+    const loadAdminData = async () => {
+        try {
+            const [usersData, statsData] = await Promise.all([
+                api.get('/api/admin/users'),
+                api.get('/api/admin/stats')
+            ]);
+            
+            setUsers(usersData.users || []);
+            setStats(statsData || {});
+        } catch (error) {
+            console.error('Failed to load admin data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    const deleteUser = async (userId) => {
+        if (!confirm('Are you sure you want to delete this user?')) return;
+        
+        try {
+            await api.delete(`/api/admin/user/${userId}`);
+            loadAdminData();
+        } catch (error) {
+            alert('Failed to delete user: ' + error.message);
+        }
+    };
+    
+    if (loading) return <Loading />;
+    
+    return (
+        <div className="space-y-6">
+            <div className="admin-card card">
+                <h1 className="text-3xl font-bold mb-2">
+                    👑 Admin Panel
+                </h1>
+                <p className="text-white/80">Platform Management & Analytics</p>
+            </div>
+            
+            {/* Platform Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <StatCard
+                    title="Total Users"
+                    value={stats.total_users || 0}
+                    icon="👥"
+                />
+                <StatCard
+                    title="Active Subs"
+                    value={stats.active_subscriptions || 0}
+                    icon="💳"
+                />
+                <StatCard
+                    title="Total Trades"
+                    value={stats.total_trades || 0}
+                    icon="📊"
+                />
+                <StatCard
+                    title="Revenue"
+                    value={formatCurrency(stats.revenue || 0)}
+                    icon="💰"
+                />
+            </div>
+            
+            {/* Users List */}
+            <div className="card">
+                <h3 className="text-xl font-bold mb-4">Users</h3>
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead>
+                            <tr className="border-b-2">
+                                <th className="text-left py-2">Wallet</th>
+                                <th className="text-left py-2">Email</th>
+                                <th className="text-left py-2">Role</th>
+                                <th className="text-left py-2">Balance</th>
+                                <th className="text-left py-2">Trades</th>
+                                <th className="text-left py-2">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {users.map(user => (
+                                <tr key={user.id} className="border-b">
+                                    <td className="py-3 text-sm">
+                                        {user.wallet_address.slice(0, 10)}...
+                                    </td>
+                                    <td className="py-3">{user.email}</td>
+                                    <td className="py-3">
+                                        <span className={`badge ${
+                                            user.role === 'admin' ? 'admin-badge' : 'badge-info'
+                                        }`}>
+                                            {user.role}
+                                        </span>
+                                    </td>
+                                    <td className="py-3">
+                                        {formatCurrency(user.balance)}
+                                    </td>
+                                    <td className="py-3">{user.total_trades}</td>
+                                    <td className="py-3">
+                                        <button
+                                            onClick={() => deleteUser(user.id)}
+                                            className="text-red-600 hover:text-red-800 text-sm"
+                                        >
+                                            Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ============================================================================
+// MAIN APP COMPONENT
+// ============================================================================
+
+const App = () => {
+    const { account, connectWallet, disconnectWallet, isConnecting } = useMetaMask();
+    const [user, setUser] = useState(null);
+    const [currentPage, setCurrentPage] = useState('dashboard');
+    const [language, setLanguage] = useState('en');
+    const [translations, setTranslations] = useState({});
+    const [toasts, setToasts] = useState([]);
+    const [loading, setLoading] = useState(false);
+    
+    useEffect(() => {
+        loadTranslations();
+    }, [language]);
+    
+    useEffect(() => {
+        if (account) {
+            loginUser();
+        }
+    }, [account]);
+    
+    const loadTranslations = async () => {
+        try {
+            const data = await api.get(`/api/translations/${language}`);
+            setTranslations(data);
+        } catch (error) {
+            console.error('Failed to load translations:', error);
+        }
+    };
+    
+    const loginUser = async () => {
+        setLoading(true);
+        try {
+            const data = await api.post('/api/auth/login', {
+                wallet_address: account
+            });
+            setUser(data.user);
+            showToast('Welcome back!', 'success');
+        } catch (error) {
+            // User doesn't exist, try register
+            try {
+                const regData = await api.post('/api/auth/register', {
+                    wallet_address: account,
+                    email: `${account}@nexusdex.ai`
+                });
+                setUser(regData.user);
+                showToast('Account created!', 'success');
+            } catch (regError) {
+                showToast('Authentication failed', 'error');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    const handleLogout = async () => {
+        await api.post('/api/auth/logout');
+        disconnectWallet();
+        setUser(null);
+        showToast('Logged out', 'info');
+    };
+    
+    const showToast = (message, type = 'info') => {
+        const id = Date.now();
+        setToasts(prev => [...prev, { id, message, type }]);
+    };
+    
+    const removeToast = (id) => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+    };
+    
+    const isAdmin = user && user.role === 'admin';
+    
+    return (
+        <div className="min-h-screen p-4 md:p-8">
+            {/* Header */}
+            <div className="glass-effect rounded-2xl p-4 mb-6">
+                <div className="flex justify-between items-center flex-wrap gap-4">
+                    <div>
+                        <h1 className="text-2xl md:text-3xl font-bold text-white">
+                            NexusDEX AI
+                        </h1>
+                        <p className="text-white/80 text-sm">Advanced DEX Trading Bot</p>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                        <LanguageSelector
+                            currentLang={language}
+                            onLanguageChange={setLanguage}
+                        />
+                        
+                        {!account ? (
+                            <button
+                                onClick={connectWallet}
+                                disabled={isConnecting}
+                                className="btn-primary"
+                            >
+                                {isConnecting ? 'Connecting...' : '🦊 Connect Wallet'}
+                            </button>
+                        ) : (
+                            <div className="flex items-center gap-3">
+                                <div className="text-white text-sm">
+                                    {account.slice(0, 6)}...{account.slice(-4)}
+                                </div>
+                                <button
+                                    onClick={handleLogout}
+                                    className="btn-secondary"
+                                >
+                            
