@@ -31,7 +31,8 @@ from exchange_connector import (
     exchange_connector, get_market_data,
     get_current_price, get_all_exchanges
 )
-from encryption import encryption_manager
+from cryptography.fernet import Fernet
+
 from risk_manager import RiskManager, RiskLimits, PositionRisk
 from notifications import initialize_notifications, notify_trade_opened, notify_trade_closed
 from strategy import TradingStrategy, analyze_market
